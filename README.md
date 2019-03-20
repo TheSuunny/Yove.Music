@@ -26,7 +26,7 @@ VkMusic Music = new VkMusic("Номер", "Пароль");
 
 if (await Music.Auth())
 {
-    List<Music> User = await Music.GetUser("https://vk.com/id0"); //Вернет всю музыку пользователя.
+    List<Music> User = await Music.GetFromUser("https://vk.com/id0"); //Вернет всю музыку пользователя.
 
     List<Music> Search = await Music.Search("BURGOS - I LIKE"); //Поиск музыки по названию.
 }

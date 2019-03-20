@@ -122,7 +122,7 @@ namespace Yove.Music
             return MusicList.Distinct().ToList();
         }
 
-        public async Task<List<Music>> GetUser(string Uri)
+        public async Task<List<Music>> GetFromUser(string Uri)
         {
             if (!IsAuth)
                 throw new Exception("Not authorization");
