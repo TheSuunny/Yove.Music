@@ -36,30 +36,23 @@ namespace Yove.Music
 
         public async Task<bool> Auth()
         {
-            try
+            if (string.IsNullOrEmpty(Login) || string.IsNullOrEmpty(Password))
+                throw new ArgumentNullException("Login or Password is null or empty");
+
+            string LoginURL = HttpUtils.Parser("<form method=\"post\" action=\"", await Client.GetString("https://m.vk.com/"), "\" novalidate>");
+
+            HttpResponse Auth = await Client.Post(LoginURL, $"email={Login}&pass={Password}", "application/x-www-form-urlencoded");
+
+            HttpResponse GetToken = await Client.Get(Auth.Location);
+
+            if (GetToken.Location != null)
             {
-                if (string.IsNullOrEmpty(Login) || string.IsNullOrEmpty(Password))
-                    throw new ArgumentNullException("Login or Password is null or empty");
+                uId = Convert.ToInt32(HttpUtils.Parser("pid=", await Client.GetString("https://m.vk.com/feed"), ";"));
 
-                string LoginURL = HttpUtils.Parser("<form method=\"post\" action=\"", await Client.GetString("https://m.vk.com/"), "\" novalidate>");
-
-                HttpResponse Auth = await Client.Post(LoginURL, $"email={Login}&pass={Password}", "application/x-www-form-urlencoded");
-
-                HttpResponse GetToken = await Client.Get(Auth.Location);
-
-                if (GetToken.Location != null)
-                {
-                    uId = Convert.ToInt32(HttpUtils.Parser("pid=", await Client.GetString("https://m.vk.com/feed"), ";"));
-
-                    return IsAuth = true;
-                }
-
-                return false;
+                return IsAuth = true;
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
+
+            return false;
         }
 
         public async Task<List<Music>> Search(string Query, int Limit = 200)
@@ -87,13 +80,13 @@ namespace Yove.Music
                     else if (MusicList.Count > 0)
                         break;
 
-                    foreach (string File in Search.Body.Split(new[] { "<div class=\"AudioSerp__found\">" }, StringSplitOptions.None)[1].Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
+                    foreach (string Item in Search.Body.Split(new[] { "<div class=\"AudioSerp__found\">" }, StringSplitOptions.None)[1].Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
                     {
-                        string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", File, "</span>").StripHTML();
-                        string Title = HttpUtils.Parser("<span class=\"ai_title\">", File, "</span>").StripHTML();
-                        string URL = HttpUtils.Parser("<input type=\"hidden\" value=\"", File, "\">");
-                        string Cover = HttpUtils.Parser("class=\"ai_play\" style=\"background-image:url(", File, ")");
-                        string Duration = HttpUtils.Parser("onclick=\"audioplayer.switchTimeFormat(this, event);\">", File, "</div>");
+                        string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", Item, "</span>").StripHTML();
+                        string Title = HttpUtils.Parser("<span class=\"ai_title\">", Item, "</span>").StripHTML();
+                        string URL = HttpUtils.Parser("<input type=\"hidden\" value=\"", Item, "\">");
+                        string Cover = HttpUtils.Parser("class=\"ai_play\" style=\"background-image:url(", Item, ")");
+                        string Duration = HttpUtils.Parser("onclick=\"audioplayer.switchTimeFormat(this, event);\">", Item, "</div>");
 
                         if (string.IsNullOrEmpty(URL) || string.IsNullOrEmpty(Artist) || string.IsNullOrEmpty(Title) || string.IsNullOrEmpty(Duration))
                             continue;
@@ -147,16 +140,16 @@ namespace Yove.Music
                 {
                     string Search = await Client.GetString($"https://m.vk.com/audio?id={UserId}&offset={i}");
 
-                    foreach (string File in Search.Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
+                    foreach (string Item in Search.Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
                     {
                         if (MusicList.Count == TotalMusic)
                             break;
 
-                        string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", File, "</span>").StripHTML();
-                        string Title = HttpUtils.Parser("<span class=\"ai_title\">", File, "</span>").StripHTML();
-                        string URL = HttpUtils.Parser("<input type=\"hidden\" value=\"", File, "\">");
-                        string Cover = HttpUtils.Parser("class=\"ai_play\" style=\"background-image:url(", File, ")");
-                        string Duration = HttpUtils.Parser("onclick=\"audioplayer.switchTimeFormat(this, event);\">", File, "</div>");
+                        string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", Item, "</span>").StripHTML();
+                        string Title = HttpUtils.Parser("<span class=\"ai_title\">", Item, "</span>").StripHTML();
+                        string URL = HttpUtils.Parser("<input type=\"hidden\" value=\"", Item, "\">");
+                        string Cover = HttpUtils.Parser("class=\"ai_play\" style=\"background-image:url(", Item, ")");
+                        string Duration = HttpUtils.Parser("onclick=\"audioplayer.switchTimeFormat(this, event);\">", Item, "</div>");
 
                         if (string.IsNullOrEmpty(URL) || string.IsNullOrEmpty(Artist) || string.IsNullOrEmpty(Title) || string.IsNullOrEmpty(Duration))
                             continue;
@@ -194,6 +187,19 @@ namespace Yove.Music
                 return null;
 
             return WebUtility.HtmlDecode(Regex.Replace(Input, "<.*?>", string.Empty)).Trim();
+        }
+
+        public static async Task<string> Save(this Music Item, string Path)
+        {
+            HttpClient Client = new HttpClient
+            {
+                EnableProtocolError = false,
+                UserAgent = HttpUtils.GenerateUserAgent()
+            };
+
+            HttpResponse Request = await Client.Get(Item.URL);
+
+            return Request.ToFile(Path, $@"{Item.Artist.Replace("/", string.Empty)} - {Item.Title.Replace("/", string.Empty)}.mp3");
         }
     }
 }

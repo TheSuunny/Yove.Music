@@ -1,4 +1,4 @@
-# Yove.Music - VK Music Search
+# Yove.Music - VK Music
 
 [![NuGet version](https://badge.fury.io/nu/Yove.Music.svg)](https://badge.fury.io/nu/Yove.Music)
 [![Downloads](https://img.shields.io/nuget/dt/Yove.Music.svg)](https://www.nuget.org/packages/Yove.Music)
@@ -28,14 +28,19 @@ if (await Music.Auth())
 {
     List<Music> User = await Music.GetFromUser("https://vk.com/id0"); //Вернет всю музыку пользователя.
 
+    foreach (Music Item in User)
+    {
+        await Item.Save("/home/user/Documents/"); //Скачает и сохранит музыку в папку.
+    }
+
     List<Music> Search = await Music.Search("BURGOS - I LIKE"); //Поиск музыки по названию.
 }
 ```
 
 ___
 
-### Other
+### Остальное
 
-If you are missing something in the library, do not be afraid to write me :)
+Если вам что-то не хватает в библиотеке, не бойтесь писать мне :)
 
 <yove@keemail.me>
