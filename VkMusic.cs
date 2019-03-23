@@ -10,7 +10,7 @@ namespace Yove.Music
 {
     public class VkMusic
     {
-        private HttpClient Client = new HttpClient
+        private HttpClient BaseClient = new HttpClient
         {
             EnableProtocolError = false,
             EnableCookies = true,
@@ -39,19 +39,19 @@ namespace Yove.Music
             if (string.IsNullOrEmpty(Login) || string.IsNullOrEmpty(Password))
                 throw new ArgumentNullException("Login or Password is null or empty");
 
-            HttpResponse GetURL = await Client.Get("https://m.vk.com/feed");
+            HttpResponse GetURL = await BaseClient.Get("https://m.vk.com/feed");
 
-            HttpResponse GetLogin = await Client.Get(GetURL.Location);
+            HttpResponse GetLogin = await BaseClient.Get(GetURL.Location);
 
-            string LoginURL = HttpUtils.Parser("<form method=\"post\" action=\"", await Client.GetString(GetLogin.Location), "\" novalidate>");
+            string LoginURL = HttpUtils.Parser("<form method=\"post\" action=\"", await BaseClient.GetString(GetLogin.Location), "\" novalidate>");
 
-            HttpResponse Auth = await Client.Post(LoginURL, $"email={Login}&pass={Password}", "application/x-www-form-urlencoded");
+            HttpResponse Auth = await BaseClient.Post(LoginURL, $"email={Login}&pass={Password}", "application/x-www-form-urlencoded");
 
-            HttpResponse GetToken = await Client.Get(Auth.Location);
+            HttpResponse GetToken = await BaseClient.Get(Auth.Location);
 
             if (GetToken.Location != null)
             {
-                uId = Convert.ToInt32(HttpUtils.Parser("pid=", await Client.GetString("https://m.vk.com/feed"), ";"));
+                uId = Convert.ToInt32(HttpUtils.Parser("pid=", await BaseClient.GetString("https://m.vk.com/feed"), ";"));
 
                 return IsAuth = true;
             }
@@ -68,6 +68,8 @@ namespace Yove.Music
                 throw new ArgumentException("Limit min 50");
 
             List<Music> MusicList = new List<Music>();
+
+            HttpClient Client = BaseClient;
 
             HttpResponse Search = await Client.Post("https://m.vk.com/audio", $"q={Query.Replace("- ", string.Empty).Replace(" -", string.Empty)}&_ajax=1", "application/x-www-form-urlencoded");
 
@@ -127,6 +129,8 @@ namespace Yove.Music
         {
             if (!IsAuth)
                 throw new Exception("Not authorization");
+
+            HttpClient Client = BaseClient;
 
             string UserId = HttpUtils.Parser("/vkontakte/m.vk.com/id", await Client.GetString($"https://m.vk.com/{Uri.Split('/').Last()}"), "\"");
 
