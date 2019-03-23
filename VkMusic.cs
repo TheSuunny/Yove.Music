@@ -39,7 +39,11 @@ namespace Yove.Music
             if (string.IsNullOrEmpty(Login) || string.IsNullOrEmpty(Password))
                 throw new ArgumentNullException("Login or Password is null or empty");
 
-            string LoginURL = HttpUtils.Parser("<form method=\"post\" action=\"", await Client.GetString("https://m.vk.com/"), "\" novalidate>");
+            HttpResponse GetURL = await Client.Get("https://m.vk.com/feed");
+
+            HttpResponse GetLogin = await Client.Get(GetURL.Location);
+
+            string LoginURL = HttpUtils.Parser("<form method=\"post\" action=\"", await Client.GetString(GetLogin.Location), "\" novalidate>");
 
             HttpResponse Auth = await Client.Post(LoginURL, $"email={Login}&pass={Password}", "application/x-www-form-urlencoded");
 
@@ -80,7 +84,11 @@ namespace Yove.Music
                     else if (MusicList.Count > 0)
                         break;
 
-                    foreach (string Item in Search.Body.Split(new[] { "<div class=\"AudioSerp__found\">" }, StringSplitOptions.None)[1].Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
+                    var HowFind = (Search.Body.Contains("AudioSerp__found"))
+                        ? Search.Body.Split(new[] { "<div class=\"AudioSerp__found\">" }, StringSplitOptions.None)[1] :
+                             Search.Body.Split(new[] { "<div class=\"ArtistPage__search\">" }, StringSplitOptions.None)[1];
+
+                    foreach (string Item in HowFind.Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
                     {
                         string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", Item, "</span>").StripHTML();
                         string Title = HttpUtils.Parser("<span class=\"ai_title\">", Item, "</span>").StripHTML();
@@ -94,7 +102,7 @@ namespace Yove.Music
                         Duration = TimeSpan.Parse($"00:{Duration}").ToString(@"hh\:mm\:ss");
                         URL = VKDecoder.Decode(URL, uId);
 
-                        if (URL.Contains("audio_api_unavailable"))
+                        if (URL == null || URL.Contains("audio_api_unavailable"))
                             continue;
 
                         Music MusicWrite = new Music
@@ -157,7 +165,7 @@ namespace Yove.Music
                         Duration = TimeSpan.Parse($"00:{Duration}").ToString(@"hh\:mm\:ss");
                         URL = VKDecoder.Decode(URL, uId);
 
-                        if (URL.Contains("audio_api_unavailable"))
+                        if (URL == null || URL.Contains("audio_api_unavailable"))
                             continue;
 
                         Music MusicWrite = new Music
