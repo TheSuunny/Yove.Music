@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Linq;
 using System.Threading.Tasks;
@@ -57,6 +58,36 @@ namespace Yove.Music
             }
 
             return false;
+        }
+
+        public async Task<int> Count(long Id)
+        {
+            if (!IsAuth)
+                throw new Exception("Not authorization");
+
+            HttpClient Client = BaseClient;
+
+            string MusicCount = HttpUtils.Parser("class=\"audioPage__count\">", await Client.GetString($"https://m.vk.com/audios{Id}"), " ");
+
+            if (MusicCount != null)
+                return Convert.ToInt32(MusicCount);
+
+            return 0;
+        }
+
+        public async Task<long> GetUserId(string URL)
+        {
+            if (!IsAuth)
+                throw new Exception("Not authorization");
+
+            HttpClient Client = BaseClient;
+
+            string UserId = HttpUtils.Parser("<a class=\"pm_item\" href=\"/audios", await Client.GetString($"https://m.vk.com/{URL.Split('/').Last()}"), "\"");
+
+            if (UserId != null)
+                return Convert.ToInt64(UserId);
+
+            return 0;
         }
 
         public async Task<List<Music>> Search(string Query, int Limit = 200)
@@ -132,29 +163,30 @@ namespace Yove.Music
 
             HttpClient Client = BaseClient;
 
-            string UserId = HttpUtils.Parser("/vkontakte/m.vk.com/id", await Client.GetString($"https://m.vk.com/{Uri.Split('/').Last()}"), "\"");
+            long UserId = await GetUserId(Uri);
 
-            if (string.IsNullOrEmpty(UserId))
+            if (UserId == 0)
                 throw new ArgumentException("User not found or page close");
 
             List<Music> MusicList = new List<Music>();
 
-            string GetMusic = await Client.GetString($"https://m.vk.com/audios{UserId}");
+            int MusicCount = await Count(UserId);
 
-            int TotalMusic = Convert.ToInt32(HttpUtils.Parser("class=\"audioPage__count\">", GetMusic, " "));
-
-            if (TotalMusic == 0)
+            if (MusicCount == 0)
                 return MusicList;
 
-            for (int i = 0; i < TotalMusic; i += 50)
+            for (int i = 0; i < MusicCount; i += 50)
             {
                 try
                 {
-                    string Search = await Client.GetString($"https://m.vk.com/audio?id={UserId}&offset={i}");
+                    string Search = HttpUtils.Parser("<div class=\"audios_block audios_list _si_container\">", await Client.GetString($"https://m.vk.com/audio?id={UserId}&offset={i}"), "<div class=\"AudioSerp__found\">");
+
+                    if (Search == null)
+                        continue;
 
                     foreach (string Item in Search.Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
                     {
-                        if (MusicList.Count == TotalMusic)
+                        if (MusicList.Count == MusicCount)
                             break;
 
                         string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", Item, "</span>").StripHTML();
@@ -212,6 +244,28 @@ namespace Yove.Music
             HttpResponse Request = await Client.Get(Item.URL);
 
             return Request.ToFile(Path, $@"{Item.Artist.Replace("/", string.Empty)} - {Item.Title.Replace("/", string.Empty)}.mp3");
+        }
+
+        public static async Task<Stream> ToStream(this Music Item)
+        {
+            HttpClient Client = new HttpClient
+            {
+                EnableProtocolError = false,
+                UserAgent = HttpUtils.GenerateUserAgent()
+            };
+
+            return await Client.GetStream(Item.URL);
+        }
+
+        public static async Task<byte[]> ToBytes(this Music Item)
+        {
+            HttpClient Client = new HttpClient
+            {
+                EnableProtocolError = false,
+                UserAgent = HttpUtils.GenerateUserAgent()
+            };
+
+            return await Client.GetBytes(Item.URL);
         }
     }
 }
