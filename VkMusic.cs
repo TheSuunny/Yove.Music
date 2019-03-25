@@ -65,7 +65,7 @@ namespace Yove.Music
             if (!IsAuth)
                 throw new Exception("Not authorization");
 
-            HttpClient Client = BaseClient;
+            HttpClient Client = (HttpClient)BaseClient.Clone();
 
             string MusicCount = HttpUtils.Parser("class=\"audioPage__count\">", await Client.GetString($"https://m.vk.com/audios{Id}"), " ");
 
@@ -80,7 +80,7 @@ namespace Yove.Music
             if (!IsAuth)
                 throw new Exception("Not authorization");
 
-            HttpClient Client = BaseClient;
+            HttpClient Client = (HttpClient)BaseClient.Clone();
 
             string UserId = HttpUtils.Parser("<a class=\"pm_item\" href=\"/audios", await Client.GetString($"https://m.vk.com/{URL.Split('/').Last()}"), "\"");
 
@@ -100,7 +100,7 @@ namespace Yove.Music
 
             List<Music> MusicList = new List<Music>();
 
-            HttpClient Client = BaseClient;
+            HttpClient Client = (HttpClient)BaseClient.Clone();
 
             HttpResponse Search = await Client.Post("https://m.vk.com/audio", $"q={Query.Replace("- ", string.Empty).Replace(" -", string.Empty)}&_ajax=1", "application/x-www-form-urlencoded");
 
@@ -161,7 +161,7 @@ namespace Yove.Music
             if (!IsAuth)
                 throw new Exception("Not authorization");
 
-            HttpClient Client = BaseClient;
+            HttpClient Client = (HttpClient)BaseClient.Clone();
 
             long UserId = await GetUserId(Uri);
 
