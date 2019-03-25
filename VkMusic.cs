@@ -156,7 +156,7 @@ namespace Yove.Music
             return MusicList.Distinct().ToList();
         }
 
-        public async Task<List<Music>> GetFromUser(string Uri)
+        public async Task<List<Music>> GetFromUser(string Uri, int Skip = 0)
         {
             if (!IsAuth)
                 throw new Exception("Not authorization");
@@ -175,7 +175,7 @@ namespace Yove.Music
             if (MusicCount == 0)
                 return MusicList;
 
-            for (int i = 0; i < MusicCount; i += 50)
+            for (int i = (Skip > 50) ? (Skip / 50 * 50 - 50) : 0; i < MusicCount; i += 50)
             {
                 try
                 {
