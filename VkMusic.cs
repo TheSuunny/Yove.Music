@@ -175,10 +175,13 @@ namespace Yove.Music
             if (MusicCount == 0)
                 return MusicList;
 
-            for (int i = (Skip > 50) ? (Skip / 50 * 50 - 50) : 0; i < MusicCount; i += 50)
+            for (int i = 0; i < MusicCount; i += 50)
             {
                 try
                 {
+                    if (Skip != 0 && MusicList.Count >= MusicCount - (Skip / 50 * 50))
+                        break;
+
                     string Search = HttpUtils.Parser("<div class=\"audios_block audios_list _si_container\">", await Client.GetString($"https://m.vk.com/audio?id={UserId}&offset={i}"), "<div class=\"AudioSerp__found\">");
 
                     if (Search == null)
