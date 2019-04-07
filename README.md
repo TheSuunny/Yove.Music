@@ -22,7 +22,13 @@ ___
 ### Как использовать?
 
 ```csharp
-VkMusic Music = new VkMusic("Номер", "Пароль");
+VkMusic Music = new VkMusic("Номер", "Пароль")
+{
+    Proxy = new ProxyClient("195.208.172.70", 8080, ProxyType.Http),
+    Proxy = new ProxyClient("195.208.172.70", 8080, ProxyType.Socks4),
+    Proxy = new ProxyClient("195.208.172.70", 8080, ProxyType.Socks5),
+    Proxy = new ProxyClient("195.208.172.70:8080", ProxyType.Http),
+};
 
 if (await Music.Auth())
 {
@@ -31,6 +37,8 @@ if (await Music.Auth())
     foreach (Music Item in User)
     {
         await Item.Save("/home/user/Documents/"); //Скачает и сохранит музыку в папку.
+        await Item.ToStream(); //Вернет файл в Stream
+        await Item.ToBytes(); //Вернет файл в Byte[]
     }
 
     List<Music> Search = await Music.Search("BURGOS - I LIKE"); //Поиск музыки по названию.
