@@ -36,9 +36,9 @@ if (await Music.Auth())
 
     foreach (Music Item in User)
     {
-        await Item.Save("/home/user/Documents/"); //Скачает и сохранит музыку в папку.
-        await Item.ToStream(); //Вернет файл в Stream
-        await Item.ToBytes(); //Вернет файл в Byte[]
+        string Filename = await Item.Save("/home/user/Documents/"); //Скачает и сохранит музыку в папку.
+        Stream FileStream = await Item.ToStream(); //Вернет файл в Stream
+        Stream FileBytes = await Item.ToBytes(); //Вернет файл в Byte[]
     }
 
     List<Music> Search = await Music.Search("BURGOS - I LIKE"); //Поиск музыки по названию.
