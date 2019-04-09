@@ -38,7 +38,7 @@ if (await Music.Auth())
     {
         string Filename = await Item.Save("/home/user/Documents/"); //Скачает и сохранит музыку в папку.
         Stream FileStream = await Item.ToStream(); //Вернет файл в Stream
-        Stream FileBytes = await Item.ToBytes(); //Вернет файл в Byte[]
+        byte[] FileBytes = await Item.ToBytes(); //Вернет файл в Byte[]
     }
 
     List<Music> Search = await Music.Search("BURGOS - I LIKE"); //Поиск музыки по названию.
