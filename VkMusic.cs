@@ -79,14 +79,15 @@ namespace Yove.Music
             if (!IsAuth)
                 throw new Exception("Not authorization");
 
-            HttpClient Client = (HttpClient)BaseClient.Clone();
+            using (HttpClient Client = (HttpClient)BaseClient.Clone())
+            {
+                string MusicCount = HttpUtils.Parser("class=\"audioPage__count\">", await Client.GetString($"https://m.vk.com/audios{Id}").ConfigureAwait(false), " ");
 
-            string MusicCount = HttpUtils.Parser("class=\"audioPage__count\">", await Client.GetString($"https://m.vk.com/audios{Id}").ConfigureAwait(false), " ");
+                if (MusicCount != null)
+                    return Convert.ToInt32(MusicCount);
 
-            if (MusicCount != null)
-                return Convert.ToInt32(MusicCount);
-
-            return 0;
+                return 0;
+            }
         }
 
         public async Task<long> GetUserId(string URL)
@@ -94,14 +95,15 @@ namespace Yove.Music
             if (!IsAuth)
                 throw new Exception("Not authorization");
 
-            HttpClient Client = (HttpClient)BaseClient.Clone();
+            using (HttpClient Client = (HttpClient)BaseClient.Clone())
+            {
+                string UserId = HttpUtils.Parser("<a class=\"pm_item\" href=\"/audios", await Client.GetString($"https://m.vk.com/{URL.Split('/').Last()}").ConfigureAwait(false), "\"");
 
-            string UserId = HttpUtils.Parser("<a class=\"pm_item\" href=\"/audios", await Client.GetString($"https://m.vk.com/{URL.Split('/').Last()}").ConfigureAwait(false), "\"");
+                if (UserId != null)
+                    return Convert.ToInt64(UserId);
 
-            if (UserId != null)
-                return Convert.ToInt64(UserId);
-
-            return 0;
+                return 0;
+            }
         }
 
         public async Task<List<Music>> Search(string Query, int Limit = 200)
@@ -114,60 +116,61 @@ namespace Yove.Music
 
             List<Music> MusicList = new List<Music>();
 
-            HttpClient Client = (HttpClient)BaseClient.Clone();
-
-            HttpResponse Search = await Client.Post("https://m.vk.com/audio", $"q={Query.Replace("- ", string.Empty).Replace(" -", string.Empty)}&_ajax=1", "application/x-www-form-urlencoded").ConfigureAwait(false);
-
-            string MusicUri = $"https://m.vk.com{HttpUtils.Parser("Все аудиозаписи</h3><a class=\"Pad__corner al_empty\" href=\"", Search.Body, "\">")}";
-
-            for (int i = 0; i < Limit; i += 50)
+            using (HttpClient Client = (HttpClient)BaseClient.Clone())
             {
-                try
+                HttpResponse Search = await Client.Post("https://m.vk.com/audio", $"q={Query.Replace("- ", string.Empty).Replace(" -", string.Empty)}&_ajax=1", "application/x-www-form-urlencoded").ConfigureAwait(false);
+
+                string MusicUri = $"https://m.vk.com{HttpUtils.Parser("Все аудиозаписи</h3><a class=\"Pad__corner al_empty\" href=\"", Search.Body, "\">")}";
+
+                for (int i = 0; i < Limit; i += 50)
                 {
-                    if (MusicUri != "https://m.vk.com")
+                    try
                     {
-                        Search = await Client.Post(MusicUri, $"_ajax=1&offset={i}", "application/x-www-form-urlencoded").ConfigureAwait(false);
-                    }
-                    else if (MusicList.Count > 0)
-                        break;
-
-                    var HowFind = (Search.Body.Contains("AudioSerp__found"))
-                        ? Search.Body.Split(new[] { "<div class=\"AudioSerp__found\">" }, StringSplitOptions.None)[1] :
-                             Search.Body.Split(new[] { "<div class=\"ArtistPage__search\">" }, StringSplitOptions.None)[1];
-
-                    foreach (string Item in HowFind.Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
-                    {
-                        string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", Item, "</span>").StripHTML();
-                        string Title = HttpUtils.Parser("<span class=\"ai_title\">", Item, "</span>").StripHTML();
-                        string URL = HttpUtils.Parser("<input type=\"hidden\" value=\"", Item, "\">");
-                        string Cover = HttpUtils.Parser("class=\"ai_play\" style=\"background-image:url(", Item, ")");
-                        string Duration = HttpUtils.Parser("onclick=\"audioplayer.switchTimeFormat(this, event);\">", Item, "</div>");
-
-                        if (string.IsNullOrEmpty(URL) || string.IsNullOrEmpty(Artist) || string.IsNullOrEmpty(Title) || string.IsNullOrEmpty(Duration))
-                            continue;
-
-                        Duration = TimeSpan.Parse($"00:{Duration}").ToString(@"hh\:mm\:ss");
-                        URL = VKDecoder.Decode(URL, uId);
-
-                        if (URL == null || URL.Contains("audio_api_unavailable"))
-                            continue;
-
-                        Music MusicWrite = new Music
+                        if (MusicUri != "https://m.vk.com")
                         {
-                            URL = URL,
-                            Artist = Artist,
-                            Title = Title,
-                            Cover = Cover,
-                            Duration = Duration
-                        };
+                            Search = await Client.Post(MusicUri, $"_ajax=1&offset={i}", "application/x-www-form-urlencoded").ConfigureAwait(false);
+                        }
+                        else if (MusicList.Count > 0)
+                            break;
 
-                        MusicList.Add(MusicWrite);
+                        var HowFind = (Search.Body.Contains("AudioSerp__found"))
+                            ? Search.Body.Split(new[] { "<div class=\"AudioSerp__found\">" }, StringSplitOptions.None)[1] :
+                                 Search.Body.Split(new[] { "<div class=\"ArtistPage__search\">" }, StringSplitOptions.None)[1];
+
+                        foreach (string Item in HowFind.Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
+                        {
+                            string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", Item, "</span>").StripHTML();
+                            string Title = HttpUtils.Parser("<span class=\"ai_title\">", Item, "</span>").StripHTML();
+                            string URL = HttpUtils.Parser("<input type=\"hidden\" value=\"", Item, "\">");
+                            string Cover = HttpUtils.Parser("class=\"ai_play\" style=\"background-image:url(", Item, ")");
+                            string Duration = HttpUtils.Parser("onclick=\"audioplayer.switchTimeFormat(this, event);\">", Item, "</div>");
+
+                            if (string.IsNullOrEmpty(URL) || string.IsNullOrEmpty(Artist) || string.IsNullOrEmpty(Title) || string.IsNullOrEmpty(Duration))
+                                continue;
+
+                            Duration = TimeSpan.Parse($"00:{Duration}").ToString(@"hh\:mm\:ss");
+                            URL = VKDecoder.Decode(URL, uId);
+
+                            if (URL == null || URL.Contains("audio_api_unavailable"))
+                                continue;
+
+                            Music MusicWrite = new Music
+                            {
+                                URL = URL,
+                                Artist = Artist,
+                                Title = Title,
+                                Cover = Cover,
+                                Duration = Duration
+                            };
+
+                            MusicList.Add(MusicWrite);
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            return MusicList.Distinct().ToList();
+                return MusicList.Distinct().ToList();
+            }
         }
 
         public async Task<List<Music>> GetFromUser(string Uri, int Skip = 0)
@@ -175,68 +178,69 @@ namespace Yove.Music
             if (!IsAuth)
                 throw new Exception("Not authorization");
 
-            HttpClient Client = (HttpClient)BaseClient.Clone();
-
-            long UserId = await GetUserId(Uri).ConfigureAwait(false);
-
-            if (UserId == 0)
-                throw new ArgumentException("User not found or page close");
-
-            List<Music> MusicList = new List<Music>();
-
-            int MusicCount = await Count(UserId).ConfigureAwait(false);
-
-            if (MusicCount == 0)
-                return MusicList;
-
-            for (int i = 0; i < MusicCount; i += 50)
+            using (HttpClient Client = (HttpClient)BaseClient.Clone())
             {
-                try
+                long UserId = await GetUserId(Uri).ConfigureAwait(false);
+
+                if (UserId == 0)
+                    throw new ArgumentException("User not found or page close");
+
+                List<Music> MusicList = new List<Music>();
+
+                int MusicCount = await Count(UserId).ConfigureAwait(false);
+
+                if (MusicCount == 0)
+                    return MusicList;
+
+                for (int i = 0; i < MusicCount; i += 50)
                 {
-                    if (Skip != 0 && MusicList.Count >= MusicCount - (Skip / 50 * 50))
-                        break;
-
-                    string Search = HttpUtils.Parser("<div class=\"audios_block audios_list _si_container\">", await Client.GetString($"https://m.vk.com/audio?id={UserId}&offset={i}").ConfigureAwait(false), "<div class=\"AudioSerp__found\">");
-
-                    if (Search == null)
-                        continue;
-
-                    foreach (string Item in Search.Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
+                    try
                     {
-                        if (MusicList.Count == MusicCount)
+                        if (Skip != 0 && MusicList.Count >= MusicCount - (Skip / 50 * 50))
                             break;
 
-                        string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", Item, "</span>").StripHTML();
-                        string Title = HttpUtils.Parser("<span class=\"ai_title\">", Item, "</span>").StripHTML();
-                        string URL = HttpUtils.Parser("<input type=\"hidden\" value=\"", Item, "\">");
-                        string Cover = HttpUtils.Parser("class=\"ai_play\" style=\"background-image:url(", Item, ")");
-                        string Duration = HttpUtils.Parser("onclick=\"audioplayer.switchTimeFormat(this, event);\">", Item, "</div>");
+                        string Search = HttpUtils.Parser("<div class=\"audios_block audios_list _si_container\">", await Client.GetString($"https://m.vk.com/audio?id={UserId}&offset={i}").ConfigureAwait(false), "<div class=\"AudioSerp__found\">");
 
-                        if (string.IsNullOrEmpty(URL) || string.IsNullOrEmpty(Artist) || string.IsNullOrEmpty(Title) || string.IsNullOrEmpty(Duration))
+                        if (Search == null)
                             continue;
 
-                        Duration = TimeSpan.Parse($"00:{Duration}").ToString(@"hh\:mm\:ss");
-                        URL = VKDecoder.Decode(URL, uId);
-
-                        if (URL == null || URL.Contains("audio_api_unavailable"))
-                            continue;
-
-                        Music MusicWrite = new Music
+                        foreach (string Item in Search.Split(new[] { "<div class=\"ai_info\">" }, StringSplitOptions.None))
                         {
-                            URL = URL,
-                            Artist = Artist,
-                            Title = Title,
-                            Cover = Cover,
-                            Duration = Duration
-                        };
+                            if (MusicList.Count == MusicCount)
+                                break;
 
-                        MusicList.Add(MusicWrite);
+                            string Artist = HttpUtils.Parser("<span class=\"ai_artist\">", Item, "</span>").StripHTML();
+                            string Title = HttpUtils.Parser("<span class=\"ai_title\">", Item, "</span>").StripHTML();
+                            string URL = HttpUtils.Parser("<input type=\"hidden\" value=\"", Item, "\">");
+                            string Cover = HttpUtils.Parser("class=\"ai_play\" style=\"background-image:url(", Item, ")");
+                            string Duration = HttpUtils.Parser("onclick=\"audioplayer.switchTimeFormat(this, event);\">", Item, "</div>");
+
+                            if (string.IsNullOrEmpty(URL) || string.IsNullOrEmpty(Artist) || string.IsNullOrEmpty(Title) || string.IsNullOrEmpty(Duration))
+                                continue;
+
+                            Duration = TimeSpan.Parse($"00:{Duration}").ToString(@"hh\:mm\:ss");
+                            URL = VKDecoder.Decode(URL, uId);
+
+                            if (URL == null || URL.Contains("audio_api_unavailable"))
+                                continue;
+
+                            Music MusicWrite = new Music
+                            {
+                                URL = URL,
+                                Artist = Artist,
+                                Title = Title,
+                                Cover = Cover,
+                                Duration = Duration
+                            };
+
+                            MusicList.Add(MusicWrite);
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            return MusicList.Distinct().ToList();
+                return MusicList.Distinct().ToList();
+            }
         }
     }
 
@@ -252,37 +256,40 @@ namespace Yove.Music
 
         public static async Task<string> Save(this Music Item, string Path)
         {
-            HttpClient Client = new HttpClient
+            using (HttpClient Client = new HttpClient
             {
                 EnableProtocolError = false,
                 UserAgent = HttpUtils.GenerateUserAgent()
-            };
+            })
+            {
+                HttpResponse Request = await Client.Get(Item.URL).ConfigureAwait(false);
 
-            HttpResponse Request = await Client.Get(Item.URL).ConfigureAwait(false);
-
-            return await Request.ToFile(Path, $@"{Item.Artist.Replace("/", string.Empty)} - {Item.Title.Replace("/", string.Empty)}.mp3").ConfigureAwait(false);
+                return await Request.ToFile(Path, $@"{Item.Artist.Replace("/", string.Empty)} - {Item.Title.Replace("/", string.Empty)}.mp3").ConfigureAwait(false);
+            }
         }
 
         public static async Task<Stream> ToStream(this Music Item)
         {
-            HttpClient Client = new HttpClient
+            using (HttpClient Client = new HttpClient
             {
                 EnableProtocolError = false,
                 UserAgent = HttpUtils.GenerateUserAgent()
-            };
-
-            return await Client.GetStream(Item.URL).ConfigureAwait(false);
+            })
+            {
+                return await Client.GetStream(Item.URL).ConfigureAwait(false);
+            }
         }
 
         public static async Task<byte[]> ToBytes(this Music Item)
         {
-            HttpClient Client = new HttpClient
+            using (HttpClient Client = new HttpClient
             {
                 EnableProtocolError = false,
                 UserAgent = HttpUtils.GenerateUserAgent()
-            };
-
-            return await Client.GetBytes(Item.URL).ConfigureAwait(false);
+            })
+            {
+                return await Client.GetBytes(Item.URL).ConfigureAwait(false);
+            }
         }
     }
 }
