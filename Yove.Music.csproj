@@ -4,7 +4,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <id>Yove.Music</id>
-    <Version>1.1.2</Version>
+    <Version>1.1.3</Version>
     <Authors>Sunny</Authors>
     <NeutralLanguage>en-US, ru-RU</NeutralLanguage>
     <Description>VK Music client for .Net</Description>
@@ -17,6 +17,6 @@
     <RepositoryUrl>https://github.com/TheSuunny/Yove.Music</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Yove.Http" Version="1.1.4"/>
+    <PackageReference Include="Yove.Http" Version="1.1.5"/>
   </ItemGroup>
 </Project>
